@@ -406,6 +406,8 @@ drawtext(const char *text, XftColor col[ColLast])
 		     buf[--i] = titletrim[--j])
 			;
 	}
+    else
+        x += (dc.w - TEXTW(buf)) / 2; // center text
 
 	d = XftDrawCreate(dpy, dc.drawable, DefaultVisual(dpy, screen), DefaultColormap(dpy, screen));
 	XftDrawStringUtf8(d, &col[ColFG], dc.font.xfont, x, y, (XftChar8 *) buf, len);
