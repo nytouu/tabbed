@@ -33,27 +33,6 @@ static Bool npisrelative  = False;
         } \
 }
 
-/*
- * Xresources preferences to load at startup
- */
-ResourcePref resources[] = {
-	{ "font",         STRING,  &font},
-	{ "normbgcolor",  STRING,  &normbgcolor},
-	{ "normfgcolor",  STRING,  &normfgcolor},
-	{ "selbgcolor",   STRING,  &selbgcolor},
-	{ "selfgcolor",   STRING,  &selfgcolor},
-	{ "urgbgcolor",   STRING,  &urgbgcolor},
-	{ "urgfgcolor",   STRING,  &urgfgcolor},
-	{ "before",       STRING,  &before},
-	{ "after",        STRING,  &after},
-	{ "titletrim",    STRING,  &titletrim},
-	{ "tabwidth",     INTEGER, &tabwidth},
-	{ "focusnew",     INTEGER, &focusnew},
-	{ "urgentswitch", INTEGER, &urgentswitch},
-	{ "newposition",  INTEGER, &newposition},
-	{ "npisrelative", INTEGER, &npisrelative},
-};
-
 #define MODKEY ControlMask
 static const Key keys[] = {
 	/* modifier             key        function     argument */

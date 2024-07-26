@@ -14,14 +14,11 @@
 #include <X11/keysym.h>
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
-#include <X11/Xresource.h>
 #include <X11/Xutil.h>
 #include <X11/XKBlib.h>
 #include <X11/Xft/Xft.h>
-#include <X11/Xresource.h>
 
 #include "arg.h"
-#include "icon.h"
 
 /* XEMBED messages */
 #define XEMBED_EMBEDDED_NOTIFY          0
@@ -51,19 +48,9 @@
 #define CLEANMASK(mask)         (mask & ~(numlockmask | LockMask))
 #define TEXTW(x)                (textnw(x, strlen(x)) + dc.font.height)
 
-#define XRESOURCE_LOAD_META(NAME)						\
-	if(!XrmGetResource(xrdb, "tabbed." NAME, "tabbed." NAME, &type, &ret))	\
-		XrmGetResource(xrdb, "*." NAME, "*." NAME, &type, &ret);	\
-	if (ret.addr != NULL && !strncmp("String", type, 64))
-
-#define XRESOURCE_LOAD_STRING(NAME, DST)	\
-	XRESOURCE_LOAD_META(NAME)		\
-	DST = ret.addr;
-
-
 enum { ColFG, ColBG, ColLast };       /* color */
 enum { WMProtocols, WMDelete, WMName, WMState, WMFullscreen,
-       XEmbed, WMSelectTab, WMIcon, WMLast }; /* default atoms */
+       XEmbed, WMSelectTab, WMLast }; /* default atoms */
 
 typedef union {
 	int i;
@@ -100,26 +87,11 @@ typedef struct {
 	Bool urgent;
 	Bool closed;
 } Client;
- 
-/* Xresources preferences */
-enum resource_type {
-	STRING = 0,
-	INTEGER = 1,
-	FLOAT = 2
-};
-
-typedef struct {
-	char *name;
-	enum resource_type type;
-	void *dst;
-} ResourcePref;
- 
 
 /* function declarations */
 static void buttonpress(const XEvent *e);
 static void cleanup(void);
 static void clientmessage(const XEvent *e);
-static void config_init(void);
 static void configurenotify(const XEvent *e);
 static void configurerequest(const XEvent *e);
 static void createnotify(const XEvent *e);
@@ -151,7 +123,6 @@ static void move(const Arg *arg);
 static void movetab(const Arg *arg);
 static void propertynotify(const XEvent *e);
 static void resize(int c, int w, int h);
-static int resource_load(XrmDatabase db, char *name, enum resource_type rtype, void *dst);
 static void rotate(const Arg *arg);
 static void run(void);
 static void sendxembed(int c, long msg, long detail, long d1, long d2);
@@ -166,10 +137,6 @@ static void updatenumlockmask(void);
 static void updatetitle(int c);
 static int xerror(Display *dpy, XErrorEvent *ee);
 static void xsettitle(Window w, const char *str);
-static void xseticon(void);
-static void xrdb_load(void);
-static void reload(int sig);
-static void writecolors(void);
 
 /* variables */
 static int screen;
@@ -204,14 +171,11 @@ static char winid[64];
 static char **cmd;
 static char *wmname = "tabbed";
 static const char *geometry;
-static unsigned long icon[ICON_WIDTH * ICON_HEIGHT + 2];
 
 static Colormap cmap;
 static Visual *visual = NULL;
 
 char *argv0;
-
-static int colors_changed = 0;
 
 /* configuration, allows nested code to access above variables */
 #include "config.h"
@@ -284,23 +248,6 @@ clientmessage(const XEvent *e)
 		}
 		running = False;
 	}
-}
-
-void
-config_init(void)
-{
-	char *resm;
-	XrmDatabase db;
-	ResourcePref *p;
-
-	XrmInitialize();
-	resm = XResourceManagerString(dpy);
-	if (!resm)
-		return;
-
-	db = XrmGetStringDatabase(resm);
-	for (p = resources; p < resources + LENGTH(resources); p++)
-		resource_load(db, p->name, p->type, p->dst);
 }
 
 void
@@ -385,8 +332,6 @@ drawbar(void)
 	int c, cc, fc, width;
 	char *name = NULL;
 	char tabtitle[256];
-
-	if (colors_changed == 1) writecolors();
 
 	if (nclients == 0) {
 		dc.x = 0;
@@ -526,8 +471,6 @@ focus(int c)
 			n += snprintf(&buf[n], sizeof(buf) - n, " %s", cmd[i]);
 
 		xsettitle(win, buf);
-		XChangeProperty(dpy, win, wmatom[WMIcon], XA_CARDINAL, 32,
-		                PropModeReplace, (unsigned char *) icon, ICON_WIDTH * ICON_HEIGHT + 2);
 		XRaiseWindow(dpy, win);
 
 		return;
@@ -547,7 +490,6 @@ focus(int c)
 		lastsel = sel;
 		sel = c;
 	}
-	xseticon();
 
 	if (clients[c]->urgent && (wmh = XGetWMHints(dpy, clients[c]->win))) {
 		wmh->flags &= ~XUrgencyHint;
@@ -855,7 +797,7 @@ manage(Window w)
 		focus(nextfocus ? nextpos :
 		      sel < 0 ? 0 :
 		      sel);
-		nextfocus = focusnew;
+		nextfocus = foreground;
 	}
 }
 
@@ -952,13 +894,9 @@ propertynotify(const XEvent *e)
 			}
 		}
 		XFree(wmh);
-		if (c == sel)
-			xseticon();
 	} else if (ev->state != PropertyDelete && ev->atom == XA_WM_NAME &&
 	           (c = getclient(ev->window)) > -1) {
 		updatetitle(c);
-	} else if (ev->atom == wmatom[WMIcon] && (c = getclient(ev->window)) > -1 && c == sel) {
-		xseticon();
 	}
 }
 
@@ -983,40 +921,6 @@ resize(int c, int w, int h)
 	XConfigureWindow(dpy, clients[c]->win, CWY | CWWidth | CWHeight, &wc);
 	XSendEvent(dpy, clients[c]->win, False, StructureNotifyMask,
 	           (XEvent *)&ce);
-}
-
-int
-resource_load(XrmDatabase db, char *name, enum resource_type rtype, void *dst)
-{
-	char **sdst = dst;
-	int *idst = dst;
-	float *fdst = dst;
-
-	char fullname[256];
-	char fullclass[256];
-	char *type;
-	XrmValue ret;
-
-	snprintf(fullname, sizeof(fullname), "%s.%s", "tabbed", name);
-	snprintf(fullclass, sizeof(fullclass), "%s.%s", "tabbed", name);
-	fullname[sizeof(fullname) - 1] = fullclass[sizeof(fullclass) - 1] = '\0';
-
-	XrmGetResource(db, fullname, fullclass, &type, &ret);
-	if (ret.addr == NULL || strncmp("String", type, 64))
-		return 1;
-
-	switch (rtype) {
-	case STRING:
-		*sdst = ret.addr;
-		break;
-	case INTEGER:
-		*idst = strtoul(ret.addr, NULL, 10);
-		break;
-	case FLOAT:
-		*fdst = strtof(ret.addr, NULL);
-		break;
-	}
-	return 0;
 }
 
 void
@@ -1124,7 +1028,6 @@ setup(void)
 	wmatom[WMSelectTab] = XInternAtom(dpy, "_TABBED_SELECT_TAB", False);
 	wmatom[WMState] = XInternAtom(dpy, "_NET_WM_STATE", False);
 	wmatom[XEmbed] = XInternAtom(dpy, "_XEMBED", False);
-	wmatom[WMIcon] = XInternAtom(dpy, "_NET_WM_ICON", False);
 
 	/* init appearance */
 	wx = 0;
@@ -1246,18 +1149,7 @@ setup(void)
 	snprintf(winid, sizeof(winid), "%lu", win);
 	setenv("XEMBED", winid, 1);
 
-	/* change icon from RGBA to ARGB */
-	icon[0] = ICON_WIDTH;
-	icon[1] =  ICON_HEIGHT;
-	for (int i = 0; i < ICON_WIDTH * ICON_HEIGHT; ++i) {
-		icon[i + 2] =
-		    ICON_PIXEL_DATA[i * 4 + 3] << 24 |
-		    ICON_PIXEL_DATA[i * 4 + 0] <<  0 |
-		    ICON_PIXEL_DATA[i * 4 + 1] <<  8 |
-		    ICON_PIXEL_DATA[i * 4 + 2] << 16 ;
-	}
-
-	nextfocus = focusnew;
+	nextfocus = foreground;
 	focus(-1);
 }
 
@@ -1450,98 +1342,11 @@ xsettitle(Window w, const char *str)
 }
 
 void
-xseticon(void)
-{
-	Atom ret_type;
-	XWMHints *wmh, *cwmh;
-	int ret_format;
-	unsigned long ret_nitems, ret_nleft;
-	long offset = 0L;
-	unsigned char *data;
-
-	wmh = XGetWMHints(dpy, win);
-	wmh->flags &= ~(IconPixmapHint | IconMaskHint);
-	wmh->icon_pixmap = wmh->icon_mask = None;
-
-
-	if (XGetWindowProperty(dpy, clients[sel]->win, wmatom[WMIcon], offset, LONG_MAX, False,
-	                       XA_CARDINAL, &ret_type, &ret_format, &ret_nitems,
-	                       &ret_nleft, &data) == Success &&
-	    ret_type == XA_CARDINAL && ret_format == 32)
-	{
-		XChangeProperty(dpy, win, wmatom[WMIcon], XA_CARDINAL, 32,
-		                PropModeReplace, data, ret_nitems);
-	} else if ((cwmh = XGetWMHints(dpy, clients[sel]->win)) && cwmh->flags & IconPixmapHint) {
-		XDeleteProperty(dpy, win, wmatom[WMIcon]);
-		wmh->flags |= IconPixmapHint;
-		wmh->icon_pixmap = cwmh->icon_pixmap;
-		if (cwmh->flags & IconMaskHint) {
-			wmh->flags |= IconMaskHint;
-			wmh->icon_mask = cwmh->icon_mask;
-		}
-		XFree(cwmh);
-	} else {
-		XChangeProperty(dpy, win, wmatom[WMIcon], XA_CARDINAL, 32,
-		                PropModeReplace, (unsigned char *) icon, ICON_WIDTH * ICON_HEIGHT + 2);
-	}
-	XSetWMHints(dpy, win, wmh);
-	XFree(wmh);
-	XFree(data);
-}
-
-void
 usage(void)
 {
 	die("usage: %s [-dfksv] [-g geometry] [-n name] [-p [s+/-]pos]\n"
 	    "       [-r narg] [-o color] [-O color] [-t color] [-T color]\n"
 	    "       [-u color] [-U color] command...\n", argv0);
-}
-
-void
-xrdb_load(void)
-{
-	char *xrm;
-	char *type;
-	XrmDatabase xrdb;
-	XrmValue ret;
-	Display *dpy;
-
-	if(!(dpy = XOpenDisplay(NULL)))
-		die("Can't open display\n");
-
-	XrmInitialize();
-	xrm = XResourceManagerString(dpy);
-
-	if (xrm != NULL) {
-		xrdb = XrmGetStringDatabase(xrm);
-		XRESOURCE_LOAD_STRING("color0", normbgcolor);
-		XRESOURCE_LOAD_STRING("color12", normfgcolor);
-		XRESOURCE_LOAD_STRING("color12", selbgcolor);
-		XRESOURCE_LOAD_STRING("color0", selfgcolor);
-		XRESOURCE_LOAD_STRING("color0", urgbgcolor);
-		XRESOURCE_LOAD_STRING("color1", urgfgcolor);
-		XRESOURCE_LOAD_STRING("font", font);
-	}
-	XFlush(dpy);
-}
-
-void
-reload(int sig) {
-	xrdb_load();
-	colors_changed=1;
-	signal(SIGUSR1, reload);
-}
-
-void
-writecolors(void) {
-	dc.norm[ColBG] = getcolor(normbgcolor);
-	dc.norm[ColFG] = getcolor(normfgcolor);
-	dc.sel[ColBG] = getcolor(selbgcolor);
-	dc.sel[ColFG] = getcolor(selfgcolor);
-	dc.urg[ColBG] = getcolor(urgbgcolor);
-	dc.urg[ColFG] = getcolor(urgfgcolor);
-
-	colors_changed = 0;
 }
 
 int
@@ -1628,9 +1433,6 @@ main(int argc, char *argv[])
 	if (!(dpy = XOpenDisplay(NULL)))
 		die("%s: cannot open display\n", argv0);
 
-	config_init();
-	xrdb_load();
-	signal(SIGUSR1, reload);
 	setup();
 	printf("0x%lx\n", win);
 	fflush(NULL);
