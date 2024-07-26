@@ -1,0 +1,28 @@
+--- tabbed.c
++++ tabbed.c
+@@ -136,6 +137,7 @@ static void updatenumlockmask(void);
+ static void updatetitle(int c);
+ static int xerror(Display *dpy, XErrorEvent *ee);
+ static void xsettitle(Window w, const char *str);
++static void xseticon(void);
+ 
+ /* variables */
+ static int screen;
+@@ -1084,6 +1095,17 @@ setup(void)
+ 	snprintf(winid, sizeof(winid), "%lu", win);
+ 	setenv("XEMBED", winid, 1);
+ 
++	/* change icon from RGBA to ARGB */
++	icon[0] = ICON_WIDTH;
++	icon[1] =  ICON_HEIGHT;
++	for (int i = 0; i < ICON_WIDTH * ICON_HEIGHT; ++i) {
++		icon[i + 2] =
++		    ICON_PIXEL_DATA[i * 4 + 3] << 24 |
++		    ICON_PIXEL_DATA[i * 4 + 0] <<  0 |
++		    ICON_PIXEL_DATA[i * 4 + 1] <<  8 |
++		    ICON_PIXEL_DATA[i * 4 + 2] << 16 ;
++	}
++
+ 	nextfocus = foreground;
+ 	focus(-1);
+ }

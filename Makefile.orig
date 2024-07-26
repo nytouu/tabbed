@@ -20,7 +20,7 @@ SRC = tabbed.c xembed.c
 OBJ = ${SRC:.c=.o}
 BIN = ${OBJ:.o=}
 MAN1 = ${BIN:=.1}
-HDR = icon.h arg.h config.def.h
+HDR = arg.h config.def.h
 DOC = LICENSE README
 
 all: ${BIN}

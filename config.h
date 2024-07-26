@@ -1,27 +1,27 @@
 /* See LICENSE file for copyright and license details. */
 
 /* appearance */
-static const char font[]        = "monospace:size=10";
-static const char* normbgcolor  = "#292522";
-static const char* normfgcolor  = "#403A36";
-static const char* selbgcolor   = "#292522";
-static const char* selfgcolor   = "#89B3B6";
-static const char* urgbgcolor   = "#292522";
-static const char* urgfgcolor   = "#D47766";
-static const char before[]      = "<";
-static const char after[]       = ">";
-static const char titletrim[]   = "...";
-static const int  tabwidth      = 200;
-static const Bool foreground    = True;
-static       Bool urgentswitch  = False;
+static char* font         = "Torus Pro:size=10";
+static char* normbgcolor  = "#1D1D1D";
+static char* normfgcolor  = "#393939";
+static char* selbgcolor   = "#1D1D1D";
+static char* selfgcolor   = "#93DDC2";
+static char* urgbgcolor   = "#1D1D1D";
+static char* urgfgcolor   = "#F66151";
+static char before[]      = "<";
+static char after[]       = ">";
+static char titletrim[]   = "...";
+static int  tabwidth      = 200;
+static int  focusnew       = 1;
+static int urgentswitch   = 0;
 
 /*
  * Where to place a new tab when it is opened. When npisrelative is True,
  * then the current position is changed + newposition. If npisrelative
  * is False, then newposition is an absolute position.
  */
-static int  newposition   = 0;
-static Bool npisrelative  = False;
+static int newposition   = 0;
+static int npisrelative  = 0;
 
 #define SETPROP(p) { \
         .v = (char *[]){ "/bin/sh", "-c", \
@@ -33,9 +33,6 @@ static Bool npisrelative  = False;
         } \
 }
 
-/*
- * Xresources preferences to load at startup
- */
 ResourcePref resources[] = {
 	{ "font",         STRING,  &font},
 	{ "normbgcolor",  STRING,  &normbgcolor},
