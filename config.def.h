@@ -1,11 +1,11 @@
 /* See LICENSE file for copyright and license details. */
 
 /* appearance */
-static const char font[]        = "Torus Pro:size=11";
+static const char font[]        = "Torus Pro:size=13";
 static const char* normbgcolor  = "#1D1D1D";
 static const char* normfgcolor  = "#393939";
 static const char* selbgcolor   = "#1D1D1D";
-static const char* selfgcolor   = "#93DDC2";
+static const char* selfgcolor   = "#62A0EA";
 static const char* urgbgcolor   = "#1D1D1D";
 static const char* urgfgcolor   = "#F66151";
 static const char before[]      = "<";
