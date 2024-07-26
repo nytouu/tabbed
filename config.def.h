@@ -1,13 +1,13 @@
 /* See LICENSE file for copyright and license details. */
 
 /* appearance */
-static const char font[]        = "monospace:size=10";
-static const char* normbgcolor  = "#292522";
-static const char* normfgcolor  = "#403A36";
-static const char* selbgcolor   = "#292522";
-static const char* selfgcolor   = "#89B3B6";
-static const char* urgbgcolor   = "#292522";
-static const char* urgfgcolor   = "#D47766";
+static const char font[]        = "Torus Pro:size=11";
+static const char* normbgcolor  = "#1D1D1D";
+static const char* normfgcolor  = "#393939";
+static const char* selbgcolor   = "#1D1D1D";
+static const char* selfgcolor   = "#93DDC2";
+static const char* urgbgcolor   = "#1D1D1D";
+static const char* urgfgcolor   = "#F66151";
 static const char before[]      = "<";
 static const char after[]       = ">";
 static const char titletrim[]   = "...";
