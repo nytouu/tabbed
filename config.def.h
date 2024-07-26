@@ -4,7 +4,7 @@
 static const char font[]        = "Torus Pro:size=13";
 static const char* normbgcolor  = "#1D1D1D";
 static const char* normfgcolor  = "#393939";
-static const char* selbgcolor   = "#1D1D1D";
+static const char* selbgcolor   = "#292929";
 static const char* selfgcolor   = "#62A0EA";
 static const char* urgbgcolor   = "#1D1D1D";
 static const char* urgfgcolor   = "#F66151";
