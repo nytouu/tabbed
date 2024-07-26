@@ -329,7 +329,7 @@ void
 drawbar(void)
 {
 	XftColor *col;
-	int c, cc, fc, width,, nbh, i;
+	int c, cc, fc, width, nbh, i;
 	char *name = NULL;
 	char tabtitle[256];
 
