@@ -1,7 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 
 /* appearance */
-static const char font[]        = "Torus Pro:size=13";
+static const char* font         = "Torus Pro:size=13";
 static const char* normbgcolor  = "#1D1D1D";
 static const char* normfgcolor  = "#393939";
 static const char* selbgcolor   = "#292929";

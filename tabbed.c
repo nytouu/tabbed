@@ -17,6 +17,7 @@
 #include <X11/Xutil.h>
 #include <X11/XKBlib.h>
 #include <X11/Xft/Xft.h>
+#include <X11/Xresource.h>
 
 #include "arg.h"
 #include "icon.h"
@@ -48,6 +49,16 @@
 #define LENGTH(x)               (sizeof((x)) / sizeof(*(x)))
 #define CLEANMASK(mask)         (mask & ~(numlockmask | LockMask))
 #define TEXTW(x)                (textnw(x, strlen(x)) + dc.font.height)
+
+#define XRESOURCE_LOAD_META(NAME)						\
+	if(!XrmGetResource(xrdb, "tabbed." NAME, "tabbed." NAME, &type, &ret))	\
+		XrmGetResource(xrdb, "*." NAME, "*." NAME, &type, &ret);	\
+	if (ret.addr != NULL && !strncmp("String", type, 64))
+
+#define XRESOURCE_LOAD_STRING(NAME, DST)	\
+	XRESOURCE_LOAD_META(NAME)		\
+	DST = ret.addr;
+
 
 enum { ColFG, ColBG, ColLast };       /* color */
 enum { WMProtocols, WMDelete, WMName, WMState, WMFullscreen,
@@ -139,6 +150,9 @@ static void updatetitle(int c);
 static int xerror(Display *dpy, XErrorEvent *ee);
 static void xsettitle(Window w, const char *str);
 static void xseticon(void);
+static void xrdb_load(void);
+static void reload(int sig);
+static void writecolors(void);
 
 /* variables */
 static int screen;
@@ -179,6 +193,8 @@ static Colormap cmap;
 static Visual *visual = NULL;
 
 char *argv0;
+
+static int colors_changed = 0;
 
 /* configuration, allows nested code to access above variables */
 #include "config.h"
@@ -335,6 +351,8 @@ drawbar(void)
 	int c, cc, fc, width, nbh, i;
 	char *name = NULL;
 	char tabtitle[256];
+
+	if (colors_changed == 1) writecolors();
 
 	if (nclients == 0) {
 		dc.x = 0;
@@ -1420,6 +1438,53 @@ usage(void)
 	    "       [-u color] [-U color] command...\n", argv0);
 }
 
+void
+xrdb_load(void)
+{
+	char *xrm;
+	char *type;
+	XrmDatabase xrdb;
+	XrmValue ret;
+	Display *dpy;
+
+	if(!(dpy = XOpenDisplay(NULL)))
+		die("Can't open display\n");
+
+	XrmInitialize();
+	xrm = XResourceManagerString(dpy);
+
+	if (xrm != NULL) {
+		xrdb = XrmGetStringDatabase(xrm);
+		XRESOURCE_LOAD_STRING("background", normbgcolor);
+		XRESOURCE_LOAD_STRING("color12", normfgcolor);
+		XRESOURCE_LOAD_STRING("color12", selbgcolor);
+		XRESOURCE_LOAD_STRING("background", selfgcolor);
+		XRESOURCE_LOAD_STRING("background", urgbgcolor);
+		XRESOURCE_LOAD_STRING("color1", urgfgcolor);
+		XRESOURCE_LOAD_STRING("font", font);
+	}
+	XFlush(dpy);
+}
+
+void
+reload(int sig) {
+	xrdb_load();
+	colors_changed=1;
+	signal(SIGUSR1, reload);
+}
+
+void
+writecolors(void) {
+	dc.norm[ColBG] = getcolor(normbgcolor);
+	dc.norm[ColFG] = getcolor(normfgcolor);
+	dc.sel[ColBG] = getcolor(selbgcolor);
+	dc.sel[ColFG] = getcolor(selfgcolor);
+	dc.urg[ColBG] = getcolor(urgbgcolor);
+	dc.urg[ColFG] = getcolor(urgfgcolor);
+
+	colors_changed = 0;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1504,6 +1569,8 @@ main(int argc, char *argv[])
 	if (!(dpy = XOpenDisplay(NULL)))
 		die("%s: cannot open display\n", argv0);
 
+	xrdb_load();
+	signal(SIGUSR1, reload);
 	setup();
 	printf("0x%lx\n", win);
 	fflush(NULL);
