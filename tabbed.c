@@ -1230,6 +1230,7 @@ spawn(const Arg *arg)
 		perror(" failed");
 		exit(0);
 	}
+	focusonce(arg);
 }
 
 int
